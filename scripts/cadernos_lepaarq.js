@@ -66,6 +66,13 @@ async function getArticlesFromEdition(edition) {
   return articles;
 }
 
+async function writeFile(data, filename) {
+  const outputDir = join(__dirname, '../raw');
+  const outputPath = join(outputDir, filename);
+  writeFileSync(outputPath, JSON.stringify(data, null, 2), 'utf8');
+  console.log(`Arquivo salvo em: ${outputPath}`);
+}
+
 async function scrape() {
   const editions = await getAllEditions();
   const bar = new ProgressBar('Scraping editions [:bar] :current/:total', {
@@ -86,9 +93,7 @@ async function scrape() {
     bar.tick();
   }
 
-  const outputDir = join(__dirname, '../raw');
-  const outputPath = join(outputDir, 'cadernos_lepaarq.json');
-  writeFileSync(outputPath, JSON.stringify(result, null, 2), 'utf8');
+  writeFile(result, 'cadernos_lepaarq.json');
 }
 
 scrape().catch(err => console.error('Erro durante a execução:', err));
