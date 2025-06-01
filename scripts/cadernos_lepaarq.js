@@ -61,9 +61,9 @@ async function scrapEditionPages(editions) {
 
       let splitAuthors;
       if (authorsText.includes(';')) {
-        splitAuthors = authorsText.split(';');
+        splitAuthors = authorsText.replace(/["“”]/g, "'").split(';');
       } else {
-        splitAuthors = authorsText.split(',');
+        splitAuthors = authorsText.replace(/["“”]/g, "'").split(',');
       }
 
       splitAuthors.forEach(name => {
@@ -120,7 +120,7 @@ export async function scrapeArticlePages(editionPagesinformation) {
         let keywords = [];
         const keywordsText = $('body').text().match(/Palavras-chave:\s*([^\n]+)/i);
         if (keywordsText && keywordsText[1]) {
-          keywords = keywordsText[1].split(',').map(k => k.trim()).filter(Boolean);
+          keywords = keywordsText[1].replace(/["“”]/g, "'").split(',').map(k => k.trim()).filter(Boolean);
         }
         // Resumo
         let abstract = '';
@@ -134,7 +134,7 @@ export async function scrapeArticlePages(editionPagesinformation) {
         // Adiciona os novos campos ao artigo
         article.doi = doi;
         article.keywords = keywords;
-        article.abstract = abstract;
+        article.abstract = abstract.replace(/["“”]/g, "'");
       } catch (err) {
         article.doi = '';
         article.keywords = [];
