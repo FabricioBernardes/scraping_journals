@@ -10,7 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BASE_URL = 'https://periodicos.ufpel.edu.br';
 const ARCHIVE_URL = [`${BASE_URL}/index.php/lepaarq/issue/archive`, `${BASE_URL}/index.php/lepaarq/issue/archive/2`];
 
-async function getAllEditions() {
+async function scrapeEditionsList() {
   const allEditions = [];
   for (const url of ARCHIVE_URL) {
     const res = await axios.get(url);
@@ -36,7 +36,7 @@ async function getAllEditions() {
   return allEditions.reduce((acc, curr) => acc.concat(curr), []);
 }
 
-async function getArticlesFromEdition(editions) {
+async function scrapEditionPages(editions) {
   const bar = new ProgressBar('Scraping editions [:bar] :current/:total', {
     total: editions.length,
     width: 30,
@@ -94,10 +94,10 @@ async function writeFile(data, filename) {
 }
 
 async function init() {
-  const editions = await getAllEditions();
-  const add_article_titles_and_authors = await getArticlesFromEdition(editions);
+  const editions = await scrapeEditionsList();
+  const editionPagesinformation = await scrapEditionPages(editions);
 
-  writeFile(add_article_titles_and_authors, 'cadernos_lepaarq.json');
+  writeFile(editionPagesinformation, 'cadernos_lepaarq.json');
 }
 
 init().catch(err => console.error('Erro durante a execução:', err));
