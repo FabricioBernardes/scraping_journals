@@ -57,6 +57,7 @@ async function scrapEditionPages(editions) {
       const authorsText = article(el)
         .find('.obj_article_summary .meta .authors')
         .text();
+      const url = article(el).find('.obj_article_summary .title a').attr('href');
 
       let splitAuthors;
       if (authorsText.includes(';')) {
@@ -70,7 +71,7 @@ async function scrapEditionPages(editions) {
         if (clean) authors.push(clean);
       });
 
-      articles.push({ title, authors });
+      articles.push({ url, title, authors });
     });
 
     result.push({
