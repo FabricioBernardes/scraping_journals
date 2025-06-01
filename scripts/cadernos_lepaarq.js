@@ -36,45 +36,7 @@ async function getAllEditions() {
   return allEditions.reduce((acc, curr) => acc.concat(curr), []);
 }
 
-async function getArticlesFromEdition(edition) {
-  const res = await axios.get(edition.url);
-  const article = load(res.data);
-  const articles = [];
-
-  article('.obj_article_summary').each((_, el) => {
-    let title = article(el).find('.obj_article_summary .title a').text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
-    const authors = [];
-    const authorsText = article(el)
-      .find('.obj_article_summary .meta .authors')
-      .text();
-
-    let splitAuthors;
-    if (authorsText.includes(';')) {
-      splitAuthors = authorsText.split(';');
-    } else {
-      splitAuthors = authorsText.split(',');
-    }
-
-    splitAuthors.forEach(name => {
-      const clean = name.replace(/\s+/g, ' ').trim();
-      if (clean) authors.push(clean);
-    });
-
-    articles.push({ title, authors });
-  });
-
-  return articles;
-}
-
-async function writeFile(data, filename) {
-  const outputDir = join(__dirname, '../raw');
-  const outputPath = join(outputDir, filename);
-  writeFileSync(outputPath, JSON.stringify(data, null, 2), 'utf8');
-  console.log(`Arquivo salvo em: ${outputPath}`);
-}
-
-async function scrape() {
-  const editions = await getAllEditions();
+async function getArticlesFromEdition(editions) {
   const bar = new ProgressBar('Scraping editions [:bar] :current/:total', {
     total: editions.length,
     width: 30,
@@ -84,16 +46,56 @@ async function scrape() {
   const result = [];
 
   for (const edition of editions) {
-    const articles = await getArticlesFromEdition(edition);
+    const res = await axios.get(edition.url);
+    const article = load(res.data);
+    const articles = [];
+
+    article('.obj_article_summary').each((_, el) => {
+      let title = article(el).find('.obj_article_summary .title a').text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
+      const authors = [];
+      const authorsText = article(el)
+        .find('.obj_article_summary .meta .authors')
+        .text();
+
+      let splitAuthors;
+      if (authorsText.includes(';')) {
+        splitAuthors = authorsText.split(';');
+      } else {
+        splitAuthors = authorsText.split(',');
+      }
+
+      splitAuthors.forEach(name => {
+        const clean = name.replace(/\s+/g, ' ').trim();
+        if (clean) authors.push(clean);
+      });
+
+      articles.push({ title, authors });
+    });
+
     result.push({
       edition: edition.title,
       url: edition.url,
-      articles,
+      articles
     });
+
     bar.tick();
   }
 
-  writeFile(result, 'cadernos_lepaarq.json');
+  return result;
 }
 
-scrape().catch(err => console.error('Erro durante a execução:', err));
+async function writeFile(data, filename) {
+  const outputDir = join(__dirname, '../raw');
+  const outputPath = join(outputDir, filename);
+  writeFileSync(outputPath, JSON.stringify(data, null, 2), 'utf8');
+  console.log(`Arquivo salvo em: ${outputPath}`);
+}
+
+async function init() {
+  const editions = await getAllEditions();
+  const add_article_titles_and_authors = await getArticlesFromEdition(editions);
+
+  writeFile(add_article_titles_and_authors, 'cadernos_lepaarq.json');
+}
+
+init().catch(err => console.error('Erro durante a execução:', err));
