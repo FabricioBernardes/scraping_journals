@@ -49,6 +49,7 @@ async function getArticlesFromEdition(editions) {
     const res = await axios.get(edition.url);
     const article = load(res.data);
     const articles = [];
+    edition.date = article('.heading .published .value').text().trim();
 
     article('.obj_article_summary').each((_, el) => {
       let title = article(el).find('.obj_article_summary .title a').text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
@@ -75,6 +76,7 @@ async function getArticlesFromEdition(editions) {
     result.push({
       edition: edition.title,
       url: edition.url,
+      date: edition.date,
       articles
     });
 
