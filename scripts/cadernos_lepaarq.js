@@ -94,11 +94,64 @@ async function writeFile(data, filename) {
   console.log(`Arquivo salvo em: ${outputPath}`);
 }
 
+export async function scrapeArticlePages(editionPagesinformation) {
+  const totalArticles = editionPagesinformation.reduce((sum, edition) => sum + edition.articles.length, 0);
+  const bar = new ProgressBar('Scraping articles [:bar] :current/:total', {
+    total: totalArticles,
+    width: 30,
+    incomplete: ' ',
+    complete: '=',
+  });
+
+  for (const edition of editionPagesinformation) {
+    for (const article of edition.articles) {
+      const url = article.url;
+      try {
+        const res = await axios.get(url);
+        const $ = load(res.data);
+        // DOI
+        let doi = '';
+        // Extrai o DOI do bloco .item.doi
+        const doiDiv = $('.item.doi .value a');
+        if (doiDiv.length) {
+          doi = doiDiv.attr('href') || doiDiv.text().trim();
+        }
+        // Palavras-chave
+        let keywords = [];
+        const keywordsText = $('body').text().match(/Palavras-chave:\s*([^\n]+)/i);
+        if (keywordsText && keywordsText[1]) {
+          keywords = keywordsText[1].split(',').map(k => k.trim()).filter(Boolean);
+        }
+        // Resumo
+        let abstract = '';
+        // Extrai o texto do resumo removendo o h3 inicial
+        const abstractDiv = $('.item.abstract');
+        if (abstractDiv.length) {
+          // Remove o h3 e pega o texto limpo
+          abstractDiv.find('h3.label').remove();
+          abstract = abstractDiv.text().replace(/\s+/g, ' ').trim();
+        }
+        // Adiciona os novos campos ao artigo
+        article.doi = doi;
+        article.keywords = keywords;
+        article.abstract = abstract;
+      } catch (err) {
+        article.doi = '';
+        article.keywords = [];
+        article.abstract = '';
+        article.error = err.message;
+      }
+      bar.tick();
+    }
+  }
+  return editionPagesinformation;
+}
+
 async function init() {
   const editions = await scrapeEditionsList();
   const editionPagesinformation = await scrapEditionPages(editions);
-
-  writeFile(editionPagesinformation, 'cadernos_lepaarq.json');
+  const data = await scrapeArticlePages(editionPagesinformation);
+  writeFile(data, 'cadernos_lepaarq.json');
 }
 
 init().catch(err => console.error('Erro durante a execução:', err));
