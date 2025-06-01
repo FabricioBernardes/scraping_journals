@@ -1,47 +1,50 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const fs = require('fs');
-const path = require('path');
+import axios from 'axios';
+import { load } from 'cheerio';
+import { writeFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import ProgressBar from 'progress';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const BASE_URL = 'https://periodicos.ufpel.edu.br';
 const ARCHIVE_URL = [`${BASE_URL}/index.php/lepaarq/issue/archive`, `${BASE_URL}/index.php/lepaarq/issue/archive/2`];
 
 async function getAllEditions() {
-  const allEditions = await Promise.all(
-    ARCHIVE_URL.map(async url => {
-      const res = await axios.get(url);
+  const allEditions = [];
+  for (const url of ARCHIVE_URL) {
+    const res = await axios.get(url);
 
-      if (res.status !== 200) {
-        throw new Error(`Erro ao acessar a página de arquivo: ${res.status}`);
+    if (res.status !== 200) {
+      throw new Error(`Erro ao acessar a página de arquivo: ${res.status}`);
+    }
+
+    const edition = load(res.data);
+    const editions = [];
+
+    edition('.obj_issue_summary').each((_, el) => {
+      const link = edition(el).find('a.title').attr('href');
+      const title = edition(el).find('a.title').text().trim();
+      if (link) {
+        editions.push({ title, url: link });
       }
+    });
 
-      const $ = cheerio.load(res.data);
-      const editions = [];
-
-      $('.obj_issue_summary').each((_, el) => {
-        const link = $(el).find('a.title').attr('href');
-        const title = $(el).find('a.title').text().trim();
-        if (link) {
-          editions.push({ title, url: link });
-        }
-      });
-
-      return editions;
-    })
-  );
+    allEditions.push(editions);
+  }
 
   return allEditions.reduce((acc, curr) => acc.concat(curr), []);
 }
 
 async function getArticlesFromEdition(edition) {
   const res = await axios.get(edition.url);
-  const $ = cheerio.load(res.data);
+  const article = load(res.data);
   const articles = [];
 
-  $('.obj_article_summary').each((_, el) => {
-    let title = $(el).find('.obj_article_summary .title a').text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
+  article('.obj_article_summary').each((_, el) => {
+    let title = article(el).find('.obj_article_summary .title a').text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
     const authors = [];
-    const authorsText = $(el)
+    const authorsText = article(el)
       .find('.obj_article_summary .meta .authors')
       .text();
 
@@ -65,6 +68,12 @@ async function getArticlesFromEdition(edition) {
 
 async function scrape() {
   const editions = await getAllEditions();
+  const bar = new ProgressBar('Scraping editions [:bar] :current/:total', {
+    total: editions.length,
+    width: 30,
+    incomplete: ' ',
+    complete: '=',
+  });
   const result = [];
 
   for (const edition of editions) {
@@ -74,11 +83,12 @@ async function scrape() {
       url: edition.url,
       articles,
     });
+    bar.tick();
   }
 
-  const outputDir = path.join(__dirname, '../raw');
-  const outputPath = path.join(outputDir, 'cadernos_lepaarq.json');
-  fs.writeFileSync(outputPath, JSON.stringify(result, null, 2), 'utf8');
+  const outputDir = join(__dirname, '../raw');
+  const outputPath = join(outputDir, 'cadernos_lepaarq.json');
+  writeFileSync(outputPath, JSON.stringify(result, null, 2), 'utf8');
 }
 
 scrape().catch(err => console.error('Erro durante a execução:', err));

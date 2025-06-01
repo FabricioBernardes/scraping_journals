@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Script para coletar artigos do periódico LEPAARQ (UFPel)",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js"
   },
@@ -10,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.6.8",
-    "cheerio": "^1.0.0-rc.12"
+    "cheerio": "^1.0.0-rc.12",
+    "progress": "^2.0.3"
   }
 }
