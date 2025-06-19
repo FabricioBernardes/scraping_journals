@@ -8,6 +8,19 @@ import https from 'https';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const SELECTORS = {
+  editionCard: '.card.issue-summary',
+  editionLink: 'a',
+  editionTitle: '.card-title>a',
+  editionDate: '.page-issue-date',
+  articleSummary: '.article-summary',
+  articleTitle: '.article-summary-title>a',
+  articleAuthors: '.article-summary-authors',
+  articleDOI: '.csl-entry a',
+  articleKeywords: '.article-details-keywords-value span',
+  articleAbstract: '.article-details-abstract p'
+};
+
 const BASE_URL = 'https://periodicos.sbu.unicamp.br/ojs/index.php/rap/issue/archive';
 const ARCHIVE_URL = [`${BASE_URL}/1`, `${BASE_URL}/2`];
 
@@ -25,9 +38,9 @@ async function scrapeEditionsList() {
     const edition = load(res.data);
     const editions = [];
 
-    edition('.card.issue-summary').each((_, el) => {
-      const link = edition(el).find('a').attr('href');
-      const title = edition(el).find('.card-title>a').text().trim();
+    edition(SELECTORS.editionCard).each((_, el) => {
+      const link = edition(el).find(SELECTORS.editionLink).attr('href');
+      const title = edition(el).find(SELECTORS.editionTitle).text().trim();
       if (link) {
         editions.push({ title, url: link });
       }
@@ -52,15 +65,15 @@ async function scrapEditionPages(editions) {
     const res = await axios.get(edition.url, { httpsAgent });
     const article = load(res.data);
     const articles = [];
-    let dateText = article('.page-issue-date').text().trim();
+    let dateText = article(SELECTORS.editionDate).text().trim();
     dateText = dateText.replace(/^publicado em\s*/i, '').trim();
     edition.date = dateText;
 
-    article('.article-summary').each((_, el) => {
-      let title = article(el).find('.article-summary-title>a').text().trim();
+    article(SELECTORS.articleSummary).each((_, el) => {
+      let title = article(el).find(SELECTORS.articleTitle).text().trim();
       const authors = [];
-      const authorsText = article(el).find('.article-summary-authors').text();
-      const url = article(el).find('.article-summary-title>a').attr('href');
+      const authorsText = article(el).find(SELECTORS.articleAuthors).text();
+      const url = article(el).find(SELECTORS.articleTitle).attr('href');
 
       let splitAuthors;
       if (authorsText.includes(';')) {
@@ -106,24 +119,21 @@ export async function scrapeArticlePages(editionPagesinformation) {
         const res = await axios.get(url, { httpsAgent });
         const $ = load(res.data);
 
-        console.log("----------......-");
-
         // DOI
         let doi = '';
-        // Extrai o DOI do bloco .item.doi
-        const doiDiv = $('.csl-entry a')
+        const doiDiv = $(SELECTORS.articleDOI);
         if (doiDiv.length) {
           doi = doiDiv.attr('href') || doiDiv.text().trim();
         }
         // Palavras-chave
         let keywords = [];
-        $('.article-details-keywords-value span').each((_, el) => {
+        $(SELECTORS.articleKeywords).each((_, el) => {
           const keyword = $(el).text()
           if (keyword) keywords.push(keyword);
         });
 
         // Resumo
-        const abstract = $('.article-details-abstract p').text().trim();
+        const abstract = $(SELECTORS.articleAbstract).text().trim();
 
         article.doi = doi;
         article.keywords = keywords;
