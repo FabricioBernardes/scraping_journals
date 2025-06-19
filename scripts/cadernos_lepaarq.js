@@ -10,6 +10,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BASE_URL = 'https://periodicos.ufpel.edu.br';
 const ARCHIVE_URL = [`${BASE_URL}/index.php/lepaarq/issue/archive`, `${BASE_URL}/index.php/lepaarq/issue/archive/2`];
 
+const SELECTORS = {
+  issueSummary: '.obj_issue_summary',
+  issueTitle: 'a.title',
+  publishedDate: '.heading .published .value',
+  articleSummary: '.obj_article_summary',
+  articleTitle: '.obj_article_summary .title a',
+  articleAuthors: '.obj_article_summary .meta .authors',
+  doi: '.item.doi .value a',
+  abstract: '.item.abstract',
+  abstractLabel: 'h3.label',
+};
+
 async function scrapeEditionsList() {
   const allEditions = [];
   for (const url of ARCHIVE_URL) {
@@ -22,9 +34,9 @@ async function scrapeEditionsList() {
     const edition = load(res.data);
     const editions = [];
 
-    edition('.obj_issue_summary').each((_, el) => {
-      const link = edition(el).find('a.title').attr('href');
-      const title = edition(el).find('a.title').text().trim();
+    edition(SELECTORS.issueSummary).each((_, el) => {
+      const link = edition(el).find(SELECTORS.issueTitle).attr('href');
+      const title = edition(el).find(SELECTORS.issueTitle).text().trim();
       if (link) {
         editions.push({ title, url: link });
       }
@@ -49,15 +61,15 @@ async function scrapEditionPages(editions) {
     const res = await axios.get(edition.url);
     const article = load(res.data);
     const articles = [];
-    edition.date = article('.heading .published .value').text().trim();
+    edition.date = article(SELECTORS.publishedDate).text().trim();
 
-    article('.obj_article_summary').each((_, el) => {
-      let title = article(el).find('.obj_article_summary .title a').text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
+    article(SELECTORS.articleSummary).each((_, el) => {
+      let title = article(el).find(SELECTORS.articleTitle).text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
       const authors = [];
       const authorsText = article(el)
-        .find('.obj_article_summary .meta .authors')
+        .find(SELECTORS.articleAuthors)
         .text();
-      const url = article(el).find('.obj_article_summary .title a').attr('href');
+      const url = article(el).find(SELECTORS.articleTitle).attr('href');
 
       let splitAuthors;
       if (authorsText.includes(';')) {
@@ -112,7 +124,7 @@ export async function scrapeArticlePages(editionPagesinformation) {
         // DOI
         let doi = '';
         // Extrai o DOI do bloco .item.doi
-        const doiDiv = $('.item.doi .value a');
+        const doiDiv = $(SELECTORS.doi);
         if (doiDiv.length) {
           doi = doiDiv.attr('href') || doiDiv.text().trim();
         }
@@ -125,10 +137,10 @@ export async function scrapeArticlePages(editionPagesinformation) {
         // Resumo
         let abstract = '';
         // Extrai o texto do resumo removendo o h3 inicial
-        const abstractDiv = $('.item.abstract');
+        const abstractDiv = $(SELECTORS.abstract);
         if (abstractDiv.length) {
           // Remove o h3 e pega o texto limpo
-          abstractDiv.find('h3.label').remove();
+          abstractDiv.find(SELECTORS.abstractLabel).remove();
           abstract = abstractDiv.text().replace(/\s+/g, ' ').trim();
         }
         // Adiciona os novos campos ao artigo
