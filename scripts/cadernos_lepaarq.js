@@ -7,48 +7,76 @@ import ProgressBar from 'progress';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const BASE_URL = 'https://periodicos.ufpel.edu.br';
-const ARCHIVE_URL = [`${BASE_URL}/index.php/lepaarq/issue/archive`, `${BASE_URL}/index.php/lepaarq/issue/archive/2`];
-
-const SELECTORS = {
-  issueSummary: '.obj_issue_summary',
-  issueTitle: 'a.title',
-  publishedDate: '.heading .published .value',
-  articleSummary: '.obj_article_summary',
-  articleTitle: '.obj_article_summary .title a',
-  articleAuthors: '.obj_article_summary .meta .authors',
-  doi: '.item.doi .value a',
-  abstract: '.item.abstract',
-  abstractLabel: 'h3.label',
+const PERIODICAL_CONFIG = {
+  name: 'Cadernos LEPAARQ',
+  baseUrl: 'https://periodicos.ufpel.edu.br',
+  archiveUrls: [
+    'https://periodicos.ufpel.edu.br/index.php/lepaarq/issue/archive',
+    'https://periodicos.ufpel.edu.br/index.php/lepaarq/issue/archive/2',
+  ],
+  selectors: {
+    issueSummary: '.obj_issue_summary',
+    issueTitle: 'a.title',
+    publishedDate: '.heading .published .value',
+    articleSummary: '.obj_article_summary',
+    articleTitle: '.obj_article_summary .title a',
+    articleAuthors: '.obj_article_summary .meta .authors',
+    doi: '.item.doi .value a',
+    abstract: '.item.abstract',
+    abstractLabel: 'h3.label',
+  },
+  keywordsRegex: /Palavras-chave:\s*([^\n]+)/i,
 };
 
-async function scrapeEditionsList() {
-  const allEditions = [];
-  for (const url of ARCHIVE_URL) {
-    const res = await axios.get(url);
+function extractAuthors(authorsText) {
+  let splitAuthors;
+  if (authorsText.includes(';')) {
+    splitAuthors = authorsText.replace(/["“”]/g, "'").split(';');
+  } else {
+    splitAuthors = authorsText.replace(/["“”]/g, "'").split(',');
+  }
+  return splitAuthors.map(name => name.replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
 
+function extractKeywords($, config) {
+  const keywordsText = $('body').text().match(config.keywordsRegex);
+  if (keywordsText && keywordsText[1]) {
+    return keywordsText[1].replace(/["“”]/g, "'").split(',').map(k => k.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function extractAbstract($, config) {
+  const abstractDiv = $(config.selectors.abstract);
+  if (abstractDiv.length) {
+    abstractDiv.find(config.selectors.abstractLabel).remove();
+    return abstractDiv.text().replace(/\s+/g, ' ').replace(/["“”]/g, "'").trim();
+  }
+  return '';
+}
+
+async function scrapeEditionsList(config) {
+  const allEditions = [];
+  for (const url of config.archiveUrls) {
+    const res = await axios.get(url);
     if (res.status !== 200) {
       throw new Error(`Erro ao acessar a página de arquivo: ${res.status}`);
     }
-
     const edition = load(res.data);
     const editions = [];
-
-    edition(SELECTORS.issueSummary).each((_, el) => {
-      const link = edition(el).find(SELECTORS.issueTitle).attr('href');
-      const title = edition(el).find(SELECTORS.issueTitle).text().trim();
+    edition(config.selectors.issueSummary).each((_, el) => {
+      const link = edition(el).find(config.selectors.issueTitle).attr('href');
+      const title = edition(el).find(config.selectors.issueTitle).text().trim();
       if (link) {
         editions.push({ title, url: link });
       }
     });
-
     allEditions.push(editions);
   }
-
-  return allEditions.reduce((acc, curr) => acc.concat(curr), []);
+  return allEditions.flat();
 }
 
-async function scrapEditionPages(editions) {
+async function scrapEditionPages(editions, config) {
   const bar = new ProgressBar('Scraping editions [:bar] :current/:total', {
     total: editions.length,
     width: 30,
@@ -56,46 +84,26 @@ async function scrapEditionPages(editions) {
     complete: '=',
   });
   const result = [];
-
   for (const edition of editions) {
     const res = await axios.get(edition.url);
     const article = load(res.data);
     const articles = [];
-    edition.date = article(SELECTORS.publishedDate).text().trim();
-
-    article(SELECTORS.articleSummary).each((_, el) => {
-      let title = article(el).find(SELECTORS.articleTitle).text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
-      const authors = [];
-      const authorsText = article(el)
-        .find(SELECTORS.articleAuthors)
-        .text();
-      const url = article(el).find(SELECTORS.articleTitle).attr('href');
-
-      let splitAuthors;
-      if (authorsText.includes(';')) {
-        splitAuthors = authorsText.replace(/["“”]/g, "'").split(';');
-      } else {
-        splitAuthors = authorsText.replace(/["“”]/g, "'").split(',');
-      }
-
-      splitAuthors.forEach(name => {
-        const clean = name.replace(/\s+/g, ' ').trim();
-        if (clean) authors.push(clean);
-      });
-
+    edition.date = article(config.selectors.publishedDate).text().trim();
+    article(config.selectors.articleSummary).each((_, el) => {
+      let title = article(el).find(config.selectors.articleTitle).text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
+      const authorsText = article(el).find(config.selectors.articleAuthors).text();
+      const url = article(el).find(config.selectors.articleTitle).attr('href');
+      const authors = extractAuthors(authorsText);
       articles.push({ url, title, authors });
     });
-
     result.push({
       edition: edition.title,
       url: edition.url,
       date: edition.date,
       articles
     });
-
     bar.tick();
   }
-
   return result;
 }
 
@@ -106,8 +114,9 @@ async function writeFile(data, filename) {
   console.log(`Arquivo salvo em: ${outputPath}`);
 }
 
-export async function scrapeArticlePages(editionPagesinformation) {
+export async function scrapeArticlePages(editionPagesinformation, config) {
   const totalArticles = editionPagesinformation.reduce((sum, edition) => sum + edition.articles.length, 0);
+
   const bar = new ProgressBar('Scraping articles [:bar] :current/:total', {
     total: totalArticles,
     width: 30,
@@ -121,32 +130,19 @@ export async function scrapeArticlePages(editionPagesinformation) {
       try {
         const res = await axios.get(url);
         const $ = load(res.data);
-        // DOI
+
         let doi = '';
-        // Extrai o DOI do bloco .item.doi
-        const doiDiv = $(SELECTORS.doi);
+        const doiDiv = $(config.selectors.doi);
         if (doiDiv.length) {
           doi = doiDiv.attr('href') || doiDiv.text().trim();
         }
-        // Palavras-chave
-        let keywords = [];
-        const keywordsText = $('body').text().match(/Palavras-chave:\s*([^\n]+)/i);
-        if (keywordsText && keywordsText[1]) {
-          keywords = keywordsText[1].replace(/["“”]/g, "'").split(',').map(k => k.trim()).filter(Boolean);
-        }
-        // Resumo
-        let abstract = '';
-        // Extrai o texto do resumo removendo o h3 inicial
-        const abstractDiv = $(SELECTORS.abstract);
-        if (abstractDiv.length) {
-          // Remove o h3 e pega o texto limpo
-          abstractDiv.find(SELECTORS.abstractLabel).remove();
-          abstract = abstractDiv.text().replace(/\s+/g, ' ').trim();
-        }
-        // Adiciona os novos campos ao artigo
+
+        const keywords = extractKeywords($, config);
+        const abstract = extractAbstract($, config);
+
         article.doi = doi;
         article.keywords = keywords;
-        article.abstract = abstract.replace(/["“”]/g, "'");
+        article.abstract = abstract;
       } catch (err) {
         article.doi = '';
         article.keywords = [];
@@ -159,11 +155,11 @@ export async function scrapeArticlePages(editionPagesinformation) {
   return editionPagesinformation;
 }
 
-async function init() {
-  const editions = await scrapeEditionsList();
-  const editionPagesinformation = await scrapEditionPages(editions);
-  const data = await scrapeArticlePages(editionPagesinformation);
+async function init(config) {
+  const editions = await scrapeEditionsList(config);
+  const editionPagesinformation = await scrapEditionPages(editions, config);
+  const data = await scrapeArticlePages(editionPagesinformation, config);
   writeFile(data, 'cadernos_lepaarq.json');
 }
 
-init().catch(err => console.error('Erro durante a execução:', err));
+init(PERIODICAL_CONFIG).catch(err => console.error('Erro durante a execução:', err));
