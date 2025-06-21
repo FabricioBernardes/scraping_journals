@@ -11,7 +11,7 @@ Projeto para extração (scraping) de dados de periódicos acadêmicos brasileir
 - [Revista de Ciências Humanas do Museu Goeldi](https://www.scielo.br/j/bgoeldi/grid)
 - [Revista do Museu de Arqueologia e Etnologia da USP](https://revistas.usp.br/revmae/issue/archive)
 - [Revista da Sociedade de Arqueologia Brasileira](https://revista.sabnet.org/ojs/index.php/sab/issue/archive)
-- [Revista Vestígios](https://periodicos.ufmg.br/index.php/vestigios)
+- [Revista Vestígios](https://periodicos.ufmg.br/index.php/vestigios/issue/archive)
 
 ## Estrutura do projeto
 
