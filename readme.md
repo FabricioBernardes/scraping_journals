@@ -15,7 +15,8 @@ Projeto para extração (scraping) de dados de periódicos acadêmicos brasileir
 
 ## Estrutura do projeto
 
-- `scripts/`: Scripts de scraping para cada revista e utilitários.
+- `scripts/`: Scripts de scraping para cada revista.
+- `utils/`: Utilitários para manipulação de dados e conversão de formatos.
 - `raw/`: Dados brutos extraídos em formato JSON.
 
 ## Como usar
@@ -38,6 +39,6 @@ Projeto para extração (scraping) de dados de periódicos acadêmicos brasileir
 - Os dados podem ser convertidos em seeds para serem consumidos por aplicações Ruby on Rails por meio do seguinte comando:
 
 ```bash
-  node scripts/json_to_seed.js
+  node utils/json_to_seed.js
 ```
 
