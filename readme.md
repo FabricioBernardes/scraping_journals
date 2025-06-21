@@ -8,7 +8,7 @@ Projeto para extração (scraping) de dados de periódicos acadêmicos brasileir
 - [Revista de Arqueologia Pública](https://periodicos.sbu.unicamp.br/ojs/index.php/rap/issue/archive)
 - [Revista Habitus](https://seer.pucgoias.edu.br/index.php/habitus/issue/archive)
 - [Revista Clio](https://periodicos.ufpe.br/revistas/index.php/clioarqueologica/issue/archive)
-- [Revista de Ciências Humanas do Museu Goeldi](http://editora.museu-goeldi.br/humanas/#)
+- [Revista de Ciências Humanas do Museu Goeldi](https://www.scielo.br/j/bgoeldi/grid)
 - [Revista do Museu de Arqueologia e Etnologia da USP](https://revistas.usp.br/revmae/issue/archive)
 - [Revista da Sociedade de Arqueologia Brasileira](https://revista.sabnet.org/ojs/index.php/sab/issue/archive)
 - [Revista Vestígios](https://periodicos.ufmg.br/index.php/vestigios)
