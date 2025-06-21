@@ -56,24 +56,25 @@ function extractAbstract($, config) {
 }
 
 async function scrapeEditionsList(config) {
-  const allEditions = [];
-  for (const url of config.archiveUrls) {
-    const res = await axios.get(url);
-    if (res.status !== 200) {
-      throw new Error(`Erro ao acessar a página de arquivo: ${res.status}`);
-    }
-    const edition = load(res.data);
-    const editions = [];
-    edition(config.selectors.issueSummary).each((_, el) => {
-      const link = edition(el).find(config.selectors.issueTitle).attr('href');
-      const title = edition(el).find(config.selectors.issueTitle).text().trim();
-      if (link) {
-        editions.push({ title, url: link });
+  const editionResults = await Promise.all(
+    config.archiveUrls.map(async (url) => {
+      const res = await axios.get(url);
+      if (res.status !== 200) {
+        throw new Error(`Erro ao acessar a página de arquivo: ${res.status}`);
       }
-    });
-    allEditions.push(editions);
-  }
-  return allEditions.flat();
+      const edition = load(res.data);
+      const editions = [];
+      edition(config.selectors.issueSummary).each((_, el) => {
+        const link = edition(el).find(config.selectors.issueTitle).attr('href');
+        const title = edition(el).find(config.selectors.issueTitle).text().trim();
+        if (link) {
+          editions.push({ title, url: link });
+        }
+      });
+      return editions;
+    })
+  );
+  return editionResults.flat();
 }
 
 async function scrapEditionPages(editions, config) {
@@ -83,28 +84,30 @@ async function scrapEditionPages(editions, config) {
     incomplete: ' ',
     complete: '=',
   });
-  const result = [];
-  for (const edition of editions) {
-    const res = await axios.get(edition.url);
-    const article = load(res.data);
-    const articles = [];
-    edition.date = article(config.selectors.publishedDate).text().trim();
-    article(config.selectors.articleSummary).each((_, el) => {
-      let title = article(el).find(config.selectors.articleTitle).text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
-      const authorsText = article(el).find(config.selectors.articleAuthors).text();
-      const url = article(el).find(config.selectors.articleTitle).attr('href');
-      const authors = extractAuthors(authorsText);
-      articles.push({ url, title, authors });
-    });
-    result.push({
-      edition: edition.title,
-      url: edition.url,
-      date: edition.date,
-      articles
-    });
-    bar.tick();
-  }
-  return result;
+
+  const editionResults = await Promise.all(
+    editions.map(async (edition) => {
+      const res = await axios.get(edition.url);
+      const article = load(res.data);
+      const articles = [];
+      edition.date = article(config.selectors.publishedDate).text().trim();
+      article(config.selectors.articleSummary).each((_, el) => {
+        let title = article(el).find(config.selectors.articleTitle).text().replace(/PDF/gi, '').replace(/\s+/g, ' ').trim();
+        const authorsText = article(el).find(config.selectors.articleAuthors).text();
+        const url = article(el).find(config.selectors.articleTitle).attr('href');
+        const authors = extractAuthors(authorsText);
+        articles.push({ url, title, authors });
+      });
+      bar.tick();
+      return {
+        edition: edition.title,
+        url: edition.url,
+        date: edition.date,
+        articles
+      };
+    })
+  );
+  return editionResults;
 }
 
 async function writeFile(data, filename) {
@@ -125,9 +128,13 @@ export async function scrapeArticlePages(editionPagesinformation, config) {
   });
 
   for (const edition of editionPagesinformation) {
-    for (const article of edition.articles) {
+    await Promise.all(
+      edition.articles.map(async (article) => {
       const url = article.url;
-      try {
+      let attempt = 0;
+      let success = false;
+      while (attempt < 2 && !success) {
+        try {
         const res = await axios.get(url);
         const $ = load(res.data);
 
@@ -143,14 +150,20 @@ export async function scrapeArticlePages(editionPagesinformation, config) {
         article.doi = doi;
         article.keywords = keywords;
         article.abstract = abstract;
-      } catch (err) {
-        article.doi = '';
-        article.keywords = [];
-        article.abstract = '';
-        article.error = err.message;
+        success = true;
+        } catch (err) {
+        attempt++;
+        if (attempt === 2) {
+          article.doi = '';
+          article.keywords = [];
+          article.abstract = '';
+          article.error = err.message;
+        }
+        }
       }
       bar.tick();
-    }
+      })
+    );
   }
   return editionPagesinformation;
 }
