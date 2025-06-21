@@ -9,7 +9,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const PERIODICAL_CONFIG = {
   name: 'Cadernos LEPAARQ',
-  baseUrl: 'https://periodicos.ufpel.edu.br',
   archiveUrls: [
     'https://periodicos.ufpel.edu.br/index.php/lepaarq/issue/archive',
     'https://periodicos.ufpel.edu.br/index.php/lepaarq/issue/archive/2',
