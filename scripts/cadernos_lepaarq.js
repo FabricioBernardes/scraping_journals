@@ -9,6 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const PERIODICAL_CONFIG = {
   name: 'Cadernos LEPAARQ',
+  fileName: 'cadernos_lepaarq.json',
   archiveUrls: [
     'https://periodicos.ufpel.edu.br/index.php/lepaarq/issue/archive',
     'https://periodicos.ufpel.edu.br/index.php/lepaarq/issue/archive/2',
@@ -171,7 +172,7 @@ async function init(config) {
   const editions = await scrapeEditionsList(config);
   const editionPagesinformation = await scrapEditionPages(editions, config);
   const data = await scrapeArticlePages(editionPagesinformation, config);
-  writeFile(data, 'cadernos_lepaarq.json');
+  writeFile(data, config.fileName);
 }
 
 init(PERIODICAL_CONFIG).catch(err => console.error('Erro durante a execução:', err));

@@ -9,9 +9,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const PERIODICAL_CONFIG = {
   name: 'Revista Habitus',
+  fileName: 'revista_habitus.json',
   archiveUrls: [
     'https://seer.pucgoias.edu.br/index.php/habitus/issue/archive/1',
-    'https://seer.pucgoias.edu.br/index.php/habitus/issue/archive/1',
+    'https://seer.pucgoias.edu.br/index.php/habitus/issue/archive/2',
   ],
   selectors: {
     issueSummary: '.obj_issue_summary',
@@ -174,7 +175,7 @@ async function init(config) {
   const editions = await scrapeEditionsList(config);
   const editionPagesinformation = await scrapEditionPages(editions, config);
   const data = await scrapeArticlePages(editionPagesinformation, config);
-  writeFile(data, 'revista_habitus.json');
+  writeFile(data, config.fileName);
 }
 
 init(PERIODICAL_CONFIG).catch(err => console.error('Erro durante a execução:', err));

@@ -10,7 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const PERIODICAL_CONFIG = {
   name: 'Arqueologia Pública',
-  baseUrl: 'https://periodicos.sbu.unicamp.br/ojs/index.php/rap/issue/archive',
+  fileName: 'arqueologia_publica.json',
   archiveUrls: [
     'https://periodicos.sbu.unicamp.br/ojs/index.php/rap/issue/archive/1',
     'https://periodicos.sbu.unicamp.br/ojs/index.php/rap/issue/archive/2',
@@ -185,7 +185,7 @@ async function init(config) {
   const editions = await scrapeEditionsList(config);
   const editionPagesinformation = await scrapEditionPages(editions, config);
   const data = await scrapeArticlePages(editionPagesinformation, config);
-  writeFile(data, 'arqueologia_publica.json');
+  writeFile(data, config.fileName);
 }
 
 init(PERIODICAL_CONFIG).catch(err => console.error('Erro durante a execução:', err));
