@@ -51,7 +51,11 @@ function extractAbstract($, config) {
   const abstractDiv = $(config.selectors.abstract);
   if (abstractDiv.length) {
     abstractDiv.find(config.selectors.abstractLabel).remove();
-    return abstractDiv.text().replace(/\s+/g, ' ').replace(/["“”]/g, "'").trim();
+    let text = abstractDiv.text().replace(/\s+/g, ' ').replace(/["“”]/g, "'").trim();
+    if (text.toLowerCase().startsWith('resumo ')) {
+      text = text.slice(7).trim();
+    }
+    return text;
   }
   return '';
 }
