@@ -1,18 +1,18 @@
 import { readFileSync, writeFileSync } from 'fs';
 
-// Substitua pelo caminho do seu arquivo JSON de entrada
 const inputFile = './raw/cadernos_lepaarq.json';
-// Substitua pelo caminho do arquivo de saída desejado
 const outputFile = 'seeds.rb';
 
 const data = JSON.parse(readFileSync(inputFile, 'utf8'));
 
 function escape(str) {
   if (!str) return '';
-  return str.replace(/'/g, "\\'");
+  // Escapa apenas aspas duplas e barras invertidas para Ruby
+  return str
+    .replace(/\\/g, "\\\\") // barra invertida
+    .replace(/\"/g, '\\"');   // aspas duplas
 }
 
-// Função para gerar Ruby hash a partir de objeto JS
 function toRubyHash(obj, indent = 2) {
   const pad = ' '.repeat(indent);
   let str = '{ ';
@@ -45,7 +45,6 @@ function editionVarName(volume) {
   );
 }
 
-// Exemplo de journals (adicione mais conforme necessário)
 const scientific_journals = [
   {
     name: "Laboratório de Ensino e Pesquisa em Antropologia e Arqueologia",
@@ -66,7 +65,6 @@ seed += scientific_journals.map(j => `  ${toRubyHash(j)}`).join(',\n');
 seed += `\n]\n\n`;
 seed += `scientific_journals.each do |attrs|\n  ScientificJournal.find_or_create_by!(issn: attrs[:issn]) do |journal|\n    journal.assign_attributes(attrs)\n  end\nend\n\n`;
 
-// Edições da LEPAARQ
 const lepaarq_editions = data.map(edition => ({
   edition_type: edition.edition_type || null,
   publication_date: edition.date,
