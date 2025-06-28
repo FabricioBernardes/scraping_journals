@@ -4,7 +4,9 @@
 /dist
 /tmp
 /out-tsc
+
 /raw
+/results
 
 # Runtime data
 pids
