@@ -5,8 +5,8 @@
 /tmp
 /out-tsc
 
-/raw
-/results
+# /raw
+# /results
 
 # Runtime data
 pids
