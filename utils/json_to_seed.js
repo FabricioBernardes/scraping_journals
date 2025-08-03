@@ -70,15 +70,15 @@ const runDataTransformation = function (journalData, journalName) {
     volume: edition.edition
   }));
 
-  seed += `${journalName} = ScientificJournal.find_by!(issn: '1806-9118')\n\n${journalName}_editions = [\n`;
+  seed += `${journalName} = ScientificJournal.find_by!(name: '${journalName}')\n\n${journalName}_editions = [\n`;
   seed += journal_editions.map(e => `  ${toRubyHash(e)}`).join(',\n');
   seed += `\n]\n\n${journalName}_editions.each do |attrs|\n  Edition.find_or_create_by!(scientific_journal: ${journalName}, volume: attrs[:volume], edition_type: attrs[:edition_type]) do |edition|\n    edition.publication_date = attrs[:publication_date]\n    edition.url = attrs[:url]\n    edition.editors = nil\n    edition.theme = nil\n    edition.doi = nil\n    edition.available_format = nil\n  end\nend\n\n`;
 
   for (const edition of data) {
     const varName = editionVarName(edition.edition);
-    const articlesArr = (edition.articles || []).map(article => ({
+    const articlesArr = (edition.articles || []).filter(article => Array.isArray(article.authors) && article.authors.length > 0).map(article => ({
       title: article.title,
-      authors: article.authors || [],
+      authors: article.authors,
       article_url: article.url,
       doi: article.doi || null,
       keywords: article.keywords || [],
